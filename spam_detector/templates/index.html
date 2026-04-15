@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Spam Detection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #f1ac63;
+            --primary-glow: rgba(240, 228, 13, 0.4);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.3);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.3);
+            --bg-dark: #0f172a;
+            --card-bg: rgba(15, 23, 42, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(-45deg, #020617, #cf870b, #f53607, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Abstract glowing orbs in background */
+        .orb {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            z-index: 0;
+            animation: float 10s infinite ease-in-out alternate;
+        }
+
+        .orb-1 {
+            top: -100px;
+            left: -100px;
+            background: #818cf8;
+        }
+
+        .orb-2 {
+            bottom: -150px;
+            right: 10%;
+            background: #ec4899;
+            animation-delay: -5s;
+        }
+
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(30px, 50px) scale(1.1);
+            }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 650px;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+            text-align: center;
+            background: linear-gradient(to right, #c7d2fe, #fbcfe8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            font-size: 1.05rem;
+            font-weight: 300;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 35px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            padding: 24px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            resize: vertical;
+            transition: all 0.3s ease;
+            outline: none;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        textarea::placeholder {
+            color: rgba(148, 163, 184, 0.5);
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 4px var(--primary-glow), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .result-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            margin-bottom: 15px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 32px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+            opacity: 0;
+            transform: scale(0.9) translateY(10px);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-transform: uppercase;
+        }
+
+        .badge.show {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+
+        .badge.spam {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 20px var(--danger-glow);
+        }
+
+        .badge.not-spam {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 20px var(--success-glow);
+        }
+
+        .badge.neutral {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .badge-icon {
+            margin-right: 8px;
+            font-size: 1.3rem;
+        }
+
+        /* Loading Animation */
+        .cyber-loader {
+            display: none;
+            width: 30px;
+            height: 30px;
+            margin-left: 15px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary);
+            border-right-color: #a855f7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--primary);
+            opacity: 0;
+            transition: opacity 0.2s;
+            height: 24px;
+            margin-bottom: 20px;
+        }
+
+        .typing-indicator.show {
+            opacity: 1;
+            animation: pulseText 1.5s infinite;
+        }
+
+        @keyframes pulseText {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: rgba(148, 163, 184, 0.7);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .accuracy-pill {
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Ambient Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="container">
+        <h1>Is it Spam?</h1>
+        <p class="subtitle">AI-powered, real-time threat detection</p>
+
+        <div class="input-group">
+            <textarea id="messageInput" placeholder="Try pasting an email or text message here..."></textarea>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            Analyzing Network Traffic...
+        </div>
+
+        <div class="result-container">
+            <div id="resultBadge" class="badge">Awaiting Input</div>
+            <div id="loader" class="cyber-loader"></div>
+        </div>
+
+        <div class="footer">
+            <span>System Status: Online</span>
+            <span class="accuracy-pill">Precision: {{ accuracy }}</span>
+        </div>
+    </div>
+
+    <script>
+        const messageInput = document.getElementById('messageInput');
+        const resultBadge = document.getElementById('resultBadge');
+        const loader = document.getElementById('loader');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        let debounceTimer;
+
+        function setNeutralState() {
+            resultBadge.innerHTML = "Awaiting Input";
+            resultBadge.className = "badge neutral show";
+        }
+
+        function showResult(result) {
+            resultBadge.className = "badge show";
+            if (result === 'Spam') {
+                resultBadge.innerHTML = "<span class='badge-icon'>⚠️</span> THREAT DETECTED";
+                resultBadge.classList.add('spam');
+            } else if (result === 'Not Spam') {
+                resultBadge.innerHTML = "<span class='badge-icon'>🛡️</span> SECURE";
+                resultBadge.classList.add('not-spam');
+            }
+        }
+
+        messageInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const text = messageInput.value;
+
+            if (text.trim() === '') {
+                setNeutralState();
+                typingIndicator.classList.remove('show');
+                loader.style.display = 'none';
+                return;
+            }
+
+            typingIndicator.classList.add('show');
+            loader.style.display = 'block';
+
+            debounceTimer = setTimeout(() => {
+                fetchPredict(text);
+            }, 300);
+        });
+
+        async function fetchPredict(text) {
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await response.json();
+
+                typingIndicator.classList.remove('show');
+                loader.style.display = 'none';
+
+                if (data.error) {
+                    resultBadge.innerHTML = "SYSTEM ERROR";
+                    resultBadge.className = "badge show neutral";
+                } else {
+                    showResult(data.result);
+                }
+            } catch (err) {
+                typingIndicator.classList.remove('show');
+                loader.style.display = 'none';
+
+                resultBadge.innerHTML = "NETWORK DISCONNECT";
+                resultBadge.className = "badge show neutral";
+            }
+        }
+
+        setNeutralState();
+    </script>
+</body>
+
+</html>
